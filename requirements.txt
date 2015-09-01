@@ -1,0 +1,4 @@
+docopt
+lxml
+requests
+sh
