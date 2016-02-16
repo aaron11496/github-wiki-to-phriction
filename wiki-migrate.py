@@ -13,9 +13,12 @@ Conduit. It worked for me once. You can switch phriction.create to
 phriction.edit to try again without having to delete everything.
 
 Usage:
-  wiki-migrate fix PHABRICATOR_URL API_TOKEN
-  wiki-migrate migrate PHABRICATOR_URL API_TOKEN
+  wiki-migrate.py fix PHABRICATOR_URL API_TOKEN
+  wiki-migrate.py migrate PHABRICATOR_URL API_TOKEN GITHUB_WIKI_PATH [SLUG_PREFIX]
 
+Arguments:
+  GITHUB_WIKI_PATH	the local path for github wiki repository.
+  SLUG_PREFIX		optional, used to put all migrated wiki pages under the wiki hierarchy. I.E. to put all wikis under 'server/', just specify the argument as 'server/'.
 """
 from docopt import docopt
 
@@ -31,7 +34,6 @@ from lxml import html
 from sh import pandoc
 from StringIO import StringIO
 
-
 def main():
     args = docopt(__doc__)
     phab_url = args['PHABRICATOR_URL']
@@ -40,7 +42,9 @@ def main():
     if args['fix']:
         fix(phab_url, api_token)
     if args['migrate']:
-        migrate(phab_url, api_token)
+        wiki_path = args['GITHUB_WIKI_PATH']
+        slug_prefix = args['SLUG_PREFIX']
+        migrate(phab_url, api_token, wiki_path, slug_prefix)
 
 
 def fix(phab_url, api_token):
@@ -62,13 +66,18 @@ def fix(phab_url, api_token):
         resp.raise_for_status()
 
 
-def migrate(phab_url, api_token):
-    for fname in glob.glob(sys.argv[1] + '/*.md'):
-        bname = os.path.basename(fname)[:-3]
+def migrate(phab_url, api_token, wiki_path, slug_prefix):
+    files = glob.glob(os.path.join(wiki_path, '*.md'))
+    files.extend(glob.glob(os.path.join(wiki_path, '*.markdown')))
+    failed_files = []
+    for fname in files:
+        bname = os.path.splitext(os.path.basename(fname))[0]
         title = string.capwords(bname.replace('-', ' '))
         slug = title.lower()
         slug = re.sub('[^a-z]', '_', slug)
         slug = re.sub('_{2,}', '_', slug)
+        if slug_prefix:
+            slug = slug_prefix + slug
 
         print fname
         print title
@@ -89,10 +98,20 @@ def migrate(phab_url, api_token):
         resp = requests.get(
             urlparse.urljoin(phab_url, '/api/phriction.create'),
             data=data)
-        resp.raise_for_status()
-        print 'Response:', resp.json()
+        try:
+            resp.raise_for_status()
+            print 'Response:', resp.json()
+        except Exception as e:
+            failed_files.append({'name': fname, 'err': str(e)})
+
         print
 
+    if len(failed_files) > 0:
+        print '**************************************************************'
+        print 'Failed files: '
+        for failed_file in failed_files:
+            print failed_file['name']
+            print failed_file['err']
 
 if __name__ == '__main__':
     main()
