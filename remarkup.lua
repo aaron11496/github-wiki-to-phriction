@@ -1,10 +1,10 @@
 -- (WIP) Pandoc Remarkup Writer
 --
--- Invoke with: pandoc -t sample.lua
+-- Invoke with: pandoc -t remarkup.lua
 --
 -- Note:  you need not have lua installed on your system to use this
 -- custom writer.  However, if you do have lua installed, you can
--- use it to test changes to the script.  'lua sample.lua' will
+-- use it to test changes to the script.  'lua remarkup.lua' will
 -- produce informative error messages if your code contains
 -- syntax errors.
 
@@ -249,45 +249,38 @@ function Table(caption, aligns, widths, headers, rows)
   if caption ~= "" then
     add("<caption>" .. caption .. "</caption>")
   end
-  if widths and widths[1] ~= 0 then
-    for _, w in pairs(widths) do
-      add('<col width="' .. string.format("%d%%", w * 100) .. '" />')
-    end
-  end
   local header_row = {}
   local empty_header = true
   for i, h in pairs(headers) do
-    local align = html_align(aligns[i])
-    table.insert(header_row,'<th align="' .. align .. '">' .. h .. '</th>')
+    table.insert(header_row,'<th>' .. h .. '</th>')
     empty_header = empty_header and h == ""
   end
   if empty_header then
     head = ""
   else
-    add('<tr class="header">')
+    add('<tr>')
     for _,h in pairs(header_row) do
       add(h)
     end
     add('</tr>')
   end
-  local class = "even"
   for _, row in pairs(rows) do
-    class = (class == "even" and "odd") or "even"
-    add('<tr class="' .. class .. '">')
+    add('<tr>')
     for i,c in pairs(row) do
-      add('<td align="' .. html_align(aligns[i]) .. '">' .. c .. '</td>')
+      add('<td>' .. c .. '</td>')
     end
     add('</tr>')
   end
-  add('</table')
+  add('</table>')
+  if caption ~= "" then
+    add("//" .. caption .. "//")
+  end
   return table.concat(buffer,'\n')
 end
 
 function Div(s, attr)
   return "<div" .. attributes(attr) .. ">\n" .. s .. "</div>"
-end
-
--- /TODO tables
+end 
 
 -- The following code will produce runtime warnings when you haven't defined
 -- all of the functions you need for the custom writer, so it's useful
