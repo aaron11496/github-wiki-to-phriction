@@ -92,6 +92,10 @@ function LineBreak()
   return "\n"
 end
 
+function SoftBreak()
+  return " "
+end
+
 function Emph(s)
   return "//" .. s .. "//"
 end
